@@ -6,7 +6,7 @@ Submission #28
 
 We provide the data-flow pruner (DFP) presented in our paper.
 First, we would like to describe the concrete evaluation scenario shortly.
-We use the fault-injection framework FAIL* (https://github.com/danceos/fail) and have extended it with our pruner.
+We use the fault-injection tool FAIL* (https://github.com/danceos/fail) and have extended it with our pruner.
 To evaluate DFP we ran FAIL* with a generic experiment after pruning the fault space with the well-known def-use pruner which is already implemented in FAIL*.
 After the execution of the campaign, FAIL* created a database with all relevant information about the programs under investigation as well as the results of the fault-injection campaign.
 The databases are the baseline of our evaluation and can be found in the database-dump/ directory.
@@ -20,18 +20,18 @@ Contains all benchmark data for the evaluation of the DFP: ELF (the benchmark) +
 ### database-dumps/
 You find two database dumps of the databases after running FAIL*'s fault-injection campaigns with def-use pruning (that is the baseline data).
 The data is split into a database with _micro_ fault-injection campaign data and a database with _mibench_ data.
-Executing the pruning or sql scripts extend the data of the databases.
-If needed, the reset\_*\_database.sh scripts reset and creates the databases.
+Executing the pruning or SQL scripts extend the data of the current database.
+If needed, the reset\_*\_database.sh scripts reset and creates the current database.
 
 ### evaluation-queries/
-You find two SQL scripts here: _analysis.sql_ produce the data used in the paper. _validate.sql_ does the validation of the DFP
+You find two SQL scripts here: _analysis.sql_ produce the data used in the paper. _validate.sql_ does the validation of the DFP.
 
 ### failstar/
 That is the fault-injection tool FAIL* directory.
 Install all relevant libs and tools as in doc/how-to-build.txt described.
 We extended FAIL* by the DFP (tools/prune-trace/DataFlowPruner.\*) and some configurations (for instance configurations/x86_pruning_capstone.sh) to make the building process more compact.
 The directory build-prebuild consist an already compiled version of FAIL*.
-The binary which produce the data of the paper is prune-trace (failstar/build-prebuild/bin/prune-trace).
+The binary which includes the DFP is prune-trace (failstar/build-prebuild/bin/prune-trace).
 
 ### pruning-scripts/
 The scripts in this directory execute the pruning with the DFP, one for the micro data and one for the MiBench data.
@@ -64,7 +64,7 @@ Done! The binary needed for data-flow--sensitive pruning is build/bin/prune-trac
 
 ## Micro Benchmarks
 
-Make sure the database _micro_ is imported and used 
+Make sure the database _micro_ is imported to mysql and used.
 
 Execute the script pruning-scripts/dataflow_pruning_micro.sh
    At the end of the step, you will find dataflow tables in the _micro_ database.
