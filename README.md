@@ -1,8 +1,8 @@
 # LCTES '21 - Data-Flow–Sensitive Fault-Space Pruning for the Injection of Transient Hardware Faults
 
-Submission #28
 Autors: Oskar Pusz and Christian Dietrich and Daniel Lohmann
-Paper: Data-Flow–Sensitive Fault-Space Pruning for the Injection of Transient Hardware Faults
+
+Submission #28
 
 We provide the data-flow pruner (DFP) presented in our paper.
 First, we would like to describe the concrete evaluation scenario shortly.
