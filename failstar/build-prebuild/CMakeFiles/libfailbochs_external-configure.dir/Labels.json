@@ -1,0 +1,34 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/ae/failstar/build/CMakeFiles/libfailbochs_external-configure"
+		},
+		{
+			"file" : "/home/ae/failstar/build/CMakeFiles/libfailbochs_external-configure.rule"
+		},
+		{
+			"file" : "/home/ae/failstar/simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-configure.rule"
+		},
+		{
+			"file" : "/home/ae/failstar/simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-update.rule"
+		},
+		{
+			"file" : "/home/ae/failstar/simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-patch.rule"
+		},
+		{
+			"file" : "/home/ae/failstar/simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-download.rule"
+		},
+		{
+			"file" : "/home/ae/failstar/simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-mkdir.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"libfailbochs_external"
+		],
+		"name" : "libfailbochs_external-configure"
+	}
+}

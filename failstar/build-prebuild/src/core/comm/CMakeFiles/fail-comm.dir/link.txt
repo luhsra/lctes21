@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libfail-comm.a  CMakeFiles/fail-comm.dir/FailControlMessage.pb.cc.o CMakeFiles/fail-comm.dir/DatabaseCampaignMessage.pb.cc.o CMakeFiles/fail-comm.dir/TracePlugin.pb.cc.o CMakeFiles/fail-comm.dir/InjectionPointStepsMessage.pb.cc.o
+/usr/bin/ranlib ../../../lib/libfail-comm.a

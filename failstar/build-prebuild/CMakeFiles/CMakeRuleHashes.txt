@@ -1,0 +1,19 @@
+# Hashes of file build rules.
+7ef112bf2f696b337d427ad773b4d144 ../simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-build
+8cb1ad04a0dc6be43bcd240d7d634a99 ../simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-configure
+461502859ed96d1548d83838ee06b6c9 ../simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-download
+31ce0f45293cf7b490c2f6a991baa8b7 ../simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-install
+a28dad5718bd5e7ea4ed621f1fb2a6b4 ../simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-mkdir
+073535640062c9487086099f079e07e5 ../simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-patch
+95bf2df13f5aebeaa6283442a34f5ff8 ../simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-update
+5f198e367b67e53843348ac13af75ea1 CMakeFiles/bochsallclean
+f8fddd1514434ee8432fd80a323ad961 CMakeFiles/bochsclean
+60f13599e62eb02f73df7abe15c4ea49 CMakeFiles/doc
+10bcc46947f8557e971b4d7d6222414a CMakeFiles/libfailbochs_external
+7946b793844f692e4b1be02ba040f012 CMakeFiles/libfailbochs_external-complete
+10bcc46947f8557e971b4d7d6222414a CMakeFiles/libfailbochs_external-configure
+4b658e3f5da5f8c25bd380e8a2e0a81b src/core/comm/CMakeFiles/fail-protoc
+8e1cd18a4fba0c9e0ea161723154e3c9 src/core/comm/DatabaseCampaignMessage.pb.cc
+f60769ed07bce8b08214bab028fb077f src/core/comm/FailControlMessage.pb.cc
+337d77dd3eb6ec46c6030db00ce31920 src/core/comm/InjectionPointStepsMessage.pb.cc
+e1de6b8edf15a41f72638b5c28d6f4cb src/core/comm/TracePlugin.pb.cc

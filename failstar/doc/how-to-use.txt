@@ -1,0 +1,342 @@
+=========================================================================================
+Steps to run a boot image in FAIL* using the Bochs simulator backend:
+=========================================================================================
+Follow the Bochs documentation, and start your own "bochsrc" configuration file
+based on the "${PREFIX}/share/doc/bochs/bochsrc-sample.txt" template (or
+"/usr/share/doc/bochs/examples/bochsrc.gz" on Debian systems with Bochs installed).
+ 1. Add your floppy/cdrom/hdd image in the floppya/ata0-master/ata0-slave
+    sections; configure the boot: section appropriately.
+ 2. Comment out com1 and parport1.
+ 3. The following Bochs configuration settings (managed in the "bochsrc" file) might
+    be helpful, depending on your needs:
+     - For "headless" experiments:
+         config_interface: textconfig
+         display_library: nogui
+     - For an X11 GUI:
+         config_interface: textconfig
+         display_library: x
+     - For a wxWidgets GUI (does not play well with FAIL*'s "restore" feature):
+         config_interface: wx
+         display_library: wx
+     - Reduce the guest system's RAM to a minimum to reduce FAIL*'s memory footprint
+       and save/restore overhead, e.g.:
+         memory: guest=16, host=16
+     - If you want to redirect FailBochs's output to a file using the shell's
+       redirection operator '>', make sure "/dev/stdout" is not used as a target
+       file for logging.  (The Debian "bochsrc" template unfortunately does this
+       in two places.  It suffices to comment out these entries.)
+     - To make FAIL* terminate if something unexpected happens in a larger
+       campaign, be sure it doesn't "ask" in these cases, e.g.:
+         panic: action=fatal
+         error: action=fatal
+         info: action=ignore
+         debug: action=ignore
+         pass: action=ignore
+     - If you need a quick-and-dirty way to pass data from the guest system to the
+       outside world, and you don't want to write an experiment utilizing
+       GuestEvents, you can use the "port e9 hack" that prints all outbs to port
+       0xe9 to the console:
+         port_e9_hack: enabled=1
+     - Determinism:  (Fail)Bochs is deterministic regarding timer interrupts,
+       i.e., two experiment runs after calling simulator.restore() will count
+       the same number of instructions between two interrupts.  Though, you
+       need to be careful when running (Fail)Bochs with a GUI enabled:  Typing
+         fail-client -q<return>
+       on the command line may lead to the GUI window receiving a "return key
+       released" event, resulting in a keyboard interrupt for the guest system.
+       This can be avoided by starting Bochs with "sleep 1; fail-client -q", by
+       suppressing keyboard input (CONFIG_DISABLE_KEYB_INTERRUPTS setting in
+       the CMake configuration), or disabling the GUI (see "headless
+       experiments" above).
+
+=========================================================================================
+Example experiments and code snippets
+=========================================================================================
+
+Experiment "weather-monitor":
+**********************************************************************
+An example of a DatabaseCampaign with separate experiment.
+ 1. Add "weather-monitor" to EXPERIMENTS_ACTIVATED,
+    add "tracing" to PLUGINS_ACTIVATED
+ 2. Enable BUILD_IMPORT_TRACE, BUILD_PRUNE_TRACE, CONFIG_EVENT_BREAKPOINTS,
+	CONFIG_EVENT_BREAKPOINTS_RANGE, CONFIG_EVENT_GUESTSYS, CONFIG_EVENT_MEMREAD,
+	CONFIG_EVENT_MEMWRITE, CONFIG_EVENT_TRAP, CONFIG_SR_RESTORE and CONFIG_SR_SAVE
+	The options BUILD_BOCHS, BUILD_X86	are needed as well, but are defaults.
+ 3. In weather-monitor/experimentInfo.hpp set "PREREQUISITES" to 1 and build
+    FAIL*/Bochs using e.g. fail/scripts/rebuild-bochs.sh (-> how-to-build.txt).
+	Upon minor changes (i.e. not e.g. to aspects), append " -" to the call to
+	the script. This will rebuild only parts that changed.
+ 4. Enter experiment_targets/weathermonitor and run:
+		find . -name "*.bz2" -execdir bunzip2 -k {} +
+	This extracts all the bzipped files in place while keeping the archives.
+ 5. In order to record a trace, run the following:
+		fail-client -q -Wf,--benchmark=weather -Wf,--variant=vanilla
+	"variant" is used to find the .elf/.vmi inside oostubs/!
+	The resulting trace thereafter lies within prerequisites/, it's name
+	being VARIANT.trace
+ 6. Use "import-trace" (using correct -b & -v, -t is VARIANT.trace) to get the
+    trace into the database and "prune-trace" to (obviously) prune the data.
+ 7. Change PREREQUISITES (see 5) back to "0" and rebuild FAIL*/Bochs.
+ 8. Run the "weather-monitor-server" (Don't forget -v & -b!) and "fail-client -q"
+    from within experiment_targets/weathermonitor/.
+	You'll need several clients to finish the campaign.
+
+Experiment "hsc-simple":
+**********************************************************************
+A simple standalone experiment (without a separate campaign). To compile this
+experiment, the following steps are required:
+ 1. Add "hsc-simple" to ccmake's EXPERIMENTS_ACTIVATED.
+ 2. Enable CONFIG_EVENT_BREAKPOINTS, CONFIG_SR_RESTORE and CONFIG_SR_SAVE.
+ 3. Build FAIL* and Bochs, see "how-to-build.txt" for details.
+ 4. Enter experiment_targets/hscsimple/, bunzip2 -k *.bz2
+ 5. Start the Bochs simulator by typing
+      $ fail-client -q
+    After successfully booting the eCos/hello world example, the console shows
+    "[HSC] breakpoint reached, saving", and a hello.state/ subdirectory appears.
+    You probably need to adjust the bochsrc's paths to romimage/vgaromimage.
+    These by default point to the locations installed by the Debian packages
+    "bochsbios" and "vgabios"; for example, you alternatively may use the
+    BIOSes supplied in "${FAIL_DIR}/simulators/bochs/bios/".
+ 6. Compile the experiment's second step: edit
+    fail/src/experiments/hsc-simple/experiment.cc, and change the first "#if 1"
+    into "#if 0".  Make an incremental build, e.g., by running
+    "${FAIL_DIR}/scripts/rebuild-bochs.sh -" from your ${BUILD_DIR}.
+ 7. Back to ../experiment_targets/hscsimple/ (assuming, your are in ${FAIL_DIR}),
+    again run 
+      $ fail-client -q
+    After restoring the state, the hello world program's calculation should
+    yield a different result.
+
+
+Experiment "coolchecksum":
+**********************************************************************
+An example for separate campaign/experiment implementations. To compile this
+experiment, the following steps are required:
+ 1. Run step #1 (and if you're curious how COOL_ECC_NUMINSTR in
+    experimentInfo.hpp was figured out, then step #2) of the experiment
+    (analogous to what needed to be done in case of the "hsc-simple" experiment,
+    see above).  The experiment's target guest system can be found under
+    ../experiment_targets/coolchecksum/.
+    (If you want to enable COOL_FAULTSPACE_PRUNING, step #2 is mandatory because
+    it generates the instruction/memory access trace needed for pruning.)
+ 2. Build the campaign server (if it wasn't already built automatically):
+      $ make coolchecksum-server
+ 3. Run the campaign server: bin/coolchecksum-server
+ 4. In another terminal, run step #3 of the experiment ("fail-client -q").
+
+Step #3 of the experiment currently runs 2000 experiment iterations and then
+terminates, because Bochs has some memory leak issues.  You need to re-run
+fail-client for the next 2k experiments.
+
+The experiments can be significantly sped up by
+ a) parallelization (run more FailBochs clients and
+ b) a headless (and more optimized) FAIL* configuration (see above).
+
+
+Experiment "MHTestCampaign":
+**********************************************************************
+An example for separate campaign/experiment implementations.
+ 1. Execute campaign (job server): ${BUILD_DIR}/bin/MHTestCampaign-server
+ 2. Run the FailBochs instance, in properly defined environment:
+      $ fail-client -q
+
+Experiment "dciao-kernelstructs":
+**********************************************************************
+This is an example for a database-driven FI campaign, with a campaign server
+instantiating the generic DatabaseCampaign.  The general workflow is as follows:
+ - Create a new database for this campaign, e.g., "dciao".  (See
+   how-to-build.txt, "Database backend setup")
+ - Record a trace using the generic tracing tool: Build a fail-client with the
+   "generic-tracing" experiment, and parametrize it with -Wf,[option] (e.g.,
+   "fail-client -Wf,--help").  Be aware that the generic tracing "experiment"
+   needs a complete simulator environment along with the ELF binary that
+   supplies symbol addresses; for FailBochs this means the usual bochsrc and
+   boot image files need to be present.
+   FIXME: dciao-kernelstructs has not been committed to
+          danceos/devel/experiment_targets/, use a "complete" example here
+ - Import the trace to the database using the import-trace tool (enable
+   BUILD_IMPORT_TRACE in the CMake configuration to get this built).  The
+   --variant/--benchmark parameters are only significant if you intend to
+   evaluate multiple protection variants and/or benchmarks.  Currently the
+   following importers (--importer X) are implemented:
+     MemoryImporter: Imports fault locations for single-location single-event
+       RAM faults (e.g., single-bit flips, or burst faults within the same
+       byte).  Directly maps memory access events from the trace to the DB.
+     AdvancedMemoryImporter: A MemoryImporter that additionally imports
+       Relyzer-style conditional branch history, instruction opcodes, and a
+       virtual duration = time2 - time1 + 1 column.
+     RegisterImporter: Imports fault locations for single-location single-event
+       register-file faults (e.g., single-bit flips in general-purpose
+       registers).  Considers only instruction addresses from the trace,
+       disassembles corresponding instructions in the supplied ELF binary (using
+       LLVM's disassembler library), and extracts used/defined registers.
+       Registers are mapped to/from "addresses" with fail::LLVMtoFailTranslator.
+     InstructionImporter: Interprets every instruction fetch as a memory read,
+       and handles it the same way the MemoryImporter handles "normal" memory
+       accesses.  Implements a fault model with faults in CPU instructions.
+     RandomJumpImporter: Implements multi-bit faults in the instruction pointer.
+       As the IP is read before every instruction, the fault space explodes
+       rapidly.  Should therefore be limited to small memory areas to jump
+       from/to.
+   Note that specifying an importer with --importer adds more parameters to the
+   --help output in some cases.
+   DB detail: This tool creates and fills the variant and trace tables.
+ - Prune the fault space with the prune-trace tool (enable BUILD_PRUNE_TRACE in
+   the CMake configuration).  This prepares all information necessary for
+   running the FI campaign.  Currently only the "basic" pruning method is
+   available, applying usual def/use pruning.
+   DB detail: This tool creates and fills the fsppilot, fspgroup and fspmethod
+   tables.
+ - Run the campaign server as usual.  In this case it does not do much more than
+   to instantiate the generic DatabaseCampaign, and to parametrize it with the
+   experiment-specific protobuf message type (DCIAOKernelProtoMsg) which must
+   adhere to some structural constraints (a required DatabaseCampaignMessage
+   fsppilot member, and a repeated group Result that contains no further
+   subgroups or repeated fields).  The DatabaseCampaign takes care of
+   distributing unfinished jobs, and collecting the results in an automatically
+   created result table with columns corresponding to the fields in the Result
+   group of the protobuf message.
+
+Experiment "weather-monitor" with gem5:
+**********************************************************************
+This experiment simulates a simple weather-station.
+To compile this experiment, the following steps are required:
+
+ 1.  Adapt fail/src/experiments/weather-monitor/experimentInfo.hpp
+ 2.  Enter ${FAIL_DIR}/build/
+ 3.  Add "weather-monitor" to ccmake's EXPERIMENTS_ACTIVATED.
+ 4.  Add "tracing" to ccmake's PLUGINS_ACTIVATED.
+ 5.  Enable BUILD_ARM, BUILD_GEM5, BUILD_IMPORT_TRACE, BUILD_PRUNE_TRACE,
+     CONFIG_EVENT_BREAKPOINTS, CONFIG_EVENT_BREAKPOINTS_RANGE, CONFIG_EVENT_GUESTSYS,
+     CONFIG_EVENT_MEMREAD, CONFIG_EVENT_MEMWRITE, CONFIG_EVENT_TRAP, CONFIG_SR_RESTORE
+     and CONFIG_SR_SAVE.
+ 6.  Enable STEP1 in fail/src/experiments/weather-monitor/experiment.cc
+ 7.  Build FAIL* and gem5, see "how-to-build.txt" for details.
+ 8.  Start the gem5-fail-client by typing
+     "../scripts/run-gem5.sh ../../experiment_targets/weathermonitor_arm/weather.elf
+     weathermonitor_arm/weather.elf"
+ 9.  Import the trace with
+     "import-trace -t trace.tc.weather -d YOUR_DB -v baseline -b weather -i
+     BasicImporter -e ../../experiment_targets/weathermonitor_arm/weather.elf
+     --faultspace-rightmargin W"
+ 10. Prune the trace with
+     "prune-trace -d YOUR_DB -v baseline -b weather"
+ 11.  Enable STEP3 in fail/src/experiments/weather-monitor/experiment.cc
+ 12. Build FAIL* and gem5, see "how-to-build.txt" for details.
+ 13. Start the campaign-server
+     "bin/weather-monitor-server -v baseline -b weather"
+ 14. Start the gem5-fail-client by typing
+     "../scripts/run-gem5.sh ../../experiment_targets/weathermonitor_arm/weather.elf
+
+=========================================================================================
+Parallelization
+=========================================================================================
+FAIL* is designed to allow parallelization of experiment execution allowing to reduce
+the time needed to execute the experiments on a (larger) set of experiment data (aka
+input parameters for the experiment execution, e.g. instruction pointer, registers, bit
+numbers, ...). We call such "experiment data" the parameter sets. The so called "campaign"
+is responsible for managing the parameter sets (i.e., the data to be used by the experiment
+flows), inquired by the clients. As a consequence, the campaign is running on the server-
+side and the experiment flows are running on the (distributed) clients.
+First of all, the FAIL* instances (and other required files, e.g. saved state) are
+distributed to the clients. In the second step the campaign(-server) is started, preparing
+its parameter sets in order to be able to answer the requests from the clients. (Once
+there are available parameter sets, the clients can request them.) In the final step,
+the distributed FAIL* clients have to be started. As soon as this setup is finished,
+the clients request new parameter sets, execute their experiment code and return their
+results to the server (aka campaign) in an iterative way, until all paremeter sets have
+been processed successfully. If all (new) parameter sets have been distributed, the
+campaign starts to re-send unfinished parameter sets to requesting clients in order to
+speed up the overall campaign execution. Additionally, this ensures that all parameter
+sets will produce a corresponding result set. (If, for example, a client terminates
+abnormally, no result is sent back. This scenario is dealt with by this mechanism, too.)
+
+
+Shell scripts supporting experiment distribution:
+**********************************************************************
+These can be found in ${FAIL_DIR}/scripts/ (for now have a look at the script files
+themselves, they contain some documentation):
+ - fail-env.sh: Environment variables for distribution/parallelization host
+                lists etc.; don't modify in-place but edit your own copy!
+ - distribute-experiment.sh: Distribute necessary FailBochs ingredients to
+                             experiment hosts.
+ - runcampaign.sh: Locally run a campaign server, and a large amount of
+                   clients on the experiment hosts.
+ - multiple-clients.sh: Is run on an experiment host by runcampaign.sh,
+                        starts several instances of client.sh in a tmux session.
+ - client.sh: (Repeatedly) Runs a single fail-client instance.
+ - run-gem5.sh: Runs a single gem5-fail-client instance.
+
+
+Some useful things to note:
+**********************************************************************
+ - Using the distribute-experiment.sh script causes the local fail-client binary to
+   be copied to the hosts. If the binary is not present in the current directory
+   the default fail-client binary (-> $ which fail-client) will be used. If you
+   have modified some of your experiment code (i.e., your fail-client binary will
+   change), don't forget to delete the local fail-client binary in order to
+   distribute the *new* binary.
+ - The runcampaign.sh script prints some status information about the clients
+   recently started. In addition, there will be a few error messages concerning
+   ssh, tmux and so on. They can be ignored for now.
+ - The runcampaign.sh script starts the coolchecksum-server. Note that the server
+   instance will terminate immediately (without notice), if there is still an
+   existing coolcampaign.csv file.
+
+=========================================================================================
+Steps to run an experiment with gem5:
+=========================================================================================
+ 1. Create a directory which will be used as gem5 system directory (which
+    will contain the guest system and boot image). Further called $SYSTEM.
+ 2. Create two directories $SYSTEM/binaries and $SYSTEM/disks.
+ 3. Put guestsystem kernel to $SYSTEM/binaries and boot image to $SYSTEM/disks.
+    For ARM targets, you can use the "linux-arm-ael.img" image contained in
+      http://www.gem5.org/dist/current/arm/arm-system-2011-08.tar.bz2
+    As an example, the resulting directory structure might look like this
+      boecke@kos:~/$FAIL_DIR/build/gem5sys$ find
+        ./binaries/abo-simple-arm.elf # your experiment binary (!= gem5)
+        ./disks/linux-arm-ael.img     # the ARM image (FIXME: whats this exactly?)
+        ./disks/boot.arm              # the ARM bootloader (FIXME: dito)
+ 4. Run gem5 in  $FAIL_DIR/simulators/gem5/  with:
+      $ M5_PATH=$SYSTEM build/ARM/gem5.debug configs/example/fs.py --bare-metal --kernel kernelname
+
+Step 4 has been encapsulated in a shell script:
+ 1. Enter ${FAIL_DIR}/build/
+ 2. Run the run-gem5.sh script with the path of the elf-binary
+    ../scripts/run-gem5.sh path-to-elf-binary
+
+=========================================================================================
+Steps to run an experiment with the pandaboard/openocd backend:
+=========================================================================================
+ 1. Prepare sd card for pandaboard usage. For example by installing a sd-image
+    of the ubuntu for pandaboard.
+ 2. In u-boot set the option bootdelay to 0 to enable the pandaboard to directly
+    boot the installed kernel without any delay. (In the first partition add the
+    file "preEnv.txt" and edit its content to "bootdelay=0")
+ 3. Use "lra-panda-dijkstra" from the "experiment_targets" directory of the project
+    svn as a template for your application development.
+    This gives you the needed fault handlers and startup code for bare metal
+    execution of code. It also delivers a minimum functionality for serial output.
+    Further reading in lra-panda-dijkstra/README.
+ 4. Copy the generated files to the prepared sd card.
+ 5. Connect flyswatter2 to the host computer and to the pandaboard.
+ 6. As information from the executable (elf format) and from the trace file are
+    needed, these two must be specified with the envirenment variables
+    FAIL_TRACE_PATH and FAIL_ELF_PATH.
+ 7. Execute the experiment/campaign as usual. If errors occure, "oocd.log" might
+    give you a hint for problem solution.
+
+=========================================================================================
+Example experiments and code snippets
+=========================================================================================
+
+Experiment "lra-simple-panda":
+**********************************************************************
+A campaign experiment to use with the lra-panda-dijkstra experiment-target.
+- The CMake option CONFIG_INJECTIONPOINT_HOPS should be enabled for fast trace
+  navigation.
+- The campaign uses the DatabaseCampaign module.
+- It will create a result table for the possible experiment outcomes
+  'OK','ERR_WRONG_RESULT','ERR_TRAP','ERR_TIMEOUT' and 'ERR_OUTSIDE_TEXT'.
+  'ERR_OUTSIDE_TEXT' describes any memory accesses which went outside the
+  application memory.

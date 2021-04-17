@@ -1,0 +1,2 @@
+database-dumps/mibench_plain.sql filter=lfs diff=lfs merge=lfs -text
+database-dumps/micro_plain.sql filter=lfs diff=lfs merge=lfs -text

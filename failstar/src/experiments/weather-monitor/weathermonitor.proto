@@ -1,0 +1,41 @@
+syntax = "proto2";
+
+import "DatabaseCampaignMessage.proto";
+
+message WeathermonitorProtoMsg {
+	required DatabaseCampaignMessage fsppilot = 1;
+
+	// Input: experiment parameters
+	// (client executes 8 experiments, one for each bit at mem_addr)
+	// ----------------------------------------------------
+	// Output: experiment results
+	repeated group Result = 6 {
+		// single experiment bit offset
+		required uint32 bitoffset = 1 [(sql_primary_key) = true];
+
+		// result type:
+		// FINISHED = planned number of instructions were executed
+		// TRAP = premature guest "crash"
+		// OUTSIDE = IP left text segment
+		enum ResultType {
+			FINISHED = 1;
+			TRAP = 2;
+			OUTSIDE = 3;
+			DETECTED = 4;
+			TIMEOUT = 5;
+			UNKNOWN = 6;
+		}
+		required ResultType resulttype = 2;
+
+		// especially interesting for TRAP/UNKNOWN: latest IP
+		required uint32 latest_ip = 3;
+
+		// number of wmoo measuring/displaying iterations before FI
+		required uint32 iter_before_fi = 4;
+		// number of wmoo measuring/displaying iterations after FI
+		required uint32 iter_after_fi = 5;
+
+		// optional textual description of what happened
+		optional string details = 6;
+	}
+}

@@ -1,0 +1,316 @@
+=========================================================================================
+Additional libraries/packages/tools needed for FAIL*:
+=========================================================================================
+
+Required for FAIL*:
+**********************************************************************
+ - build-essential (e.g. g++)
+ - libmysqlclient-dev or libmariadbclient-dev
+ - protobuf-compiler libprotobuf-dev
+ - libpcl1-dev
+ - libboost-thread-dev libboost-system-dev libboost-regex-dev libboost-coroutine-dev libboost-context-dev
+ - libdwarf-dev libelf-dev
+ - cmake >=2.8.2
+ - libfontconfig1-dev
+ - zlib1g-dev
+ - binutils-dev libiberty-dev
+ - AspectC++ (ag++, ac++):
+   * AspectC++ 1.1 or 1.2 as well as the clang-based >1.2 versions are known to
+     work and can be obtained from <http://www.aspectc.org>.  Make sure you use
+     the 64-bit version if running in a 64-bit environment.
+   * In some environments, some AspectC++ versions have issues ingesting
+     specific system headers.  Workaround: build with CMAKE_AGPP_FLAGS
+     "-D__NO_MATH_INLINES -D__STRICT_ANSI__" or "--c_compiler clang++" (the
+     latter requires the clang++ compiler).
+ - optional:
+   * the Capstone disassembler library, version 4.0 or newer
+     - Capstone is highly recommended over using LLVM, which provides
+       incomplete def/use information for many opcodes.
+     - Note that Debian's/Ubuntu's libcapstone-dev 4.0.1+really+3.0.5 does not
+       suffice.  As of this writing, you need to build/install the Capstone
+       library yourself on these distributions.
+     - If the build system cannot automatically locate the Capstone library,
+       manually set CAPSTONE_INCLUDE_DIR and CAPSTONE_LIBRARY in the cmake
+       configuration.  Consider using the static libcapstone.a library instead
+       of the .so variant.
+   * LLVM 3.9, 4.0, 5.0, or 6.0 (needed for several importers in
+     tools/import-trace): llvm-3.9-dev, llvm-4.0-dev, llvm-5.0-dev or
+     llvm-6.0-dev
+     -  built with "make REQUIRES_RTTI=1" (the Debian/Ubuntu packages already
+        come built this way)
+     -  details below
+   * a MySQL 5.0+ or MariaDB 5.1+ (MariaDB 5.5 recommended) server
+   * doxygen
+   * cmake-curses-gui
+   * python-numpy and python-matplotlib for the faultspaceplot tool
+
+
+
+Required for the Bochs simulator backend:
+**********************************************************************
+ - libpthread
+ - Probably more, depending on, e.g., the GUI you configure
+   (bochs_configure_params in the cmake configuration):
+   SDL/X11 (--with-sdl;--with-x11) -> libsdl1.2-dev
+   wx (--with-wx) -> libgtk2.0-dev libwxgtk3.0-dev libwxbase3.0-dev
+
+Required for the gem5 simulator backend:
+**********************************************************************
+ - SCons
+ - SWIG
+ - zlib
+ - m4
+ - python-dev
+ - optional: libgoogle-perftools-dev
+
+ Required for the pandaboard (openocd) backend:
+**********************************************************************
+ - libftdi-dev
+ - libjim-dev
+
+ Required for the compute-hops tool
+**********************************************************************
+ - libprocps0-dev
+
+For distribution/parallelization:
+**********************************************************************
+ - rsync
+ - tmux
+
+
+32-bit FailBochs on x86_64 Linux machines:
+**********************************************************************
+ - Create a "bochslibs" directory and fill it with all necessary libraries from
+   your build machine:
+     $ mkdir bochslibs
+     $ cp -v $(ldd fail-client|awk '{print $3}'|egrep -v '\(|lib(pthread|selinux|c.so.)|^$') bochslibs/
+ - Copy this directory to ~/bochslibs on all machines lacking these libraries
+   (this may also be the case for i386 machines you cannot install library
+   packages on yourself).  client.sh will add ~/bochslibs to LD_LIBRARY_PATH if
+   it exists.
+
+=========================================================================================
+Compiling, building and modifying: Simulators and FAIL*
+=========================================================================================
+
+Building FAIL*:
+**********************************************************************
+
+For the first time:
+------------------------------------------------------------
+ 1. Enter the "fail/" directory (${FAIL_DIR}, see also "fail-structure.txt"):
+      $ cd fail/
+ 2. (Optional) Cleanup previous CMake remnants:
+      $ find -name CMakeCache.txt | xargs rm
+ 3. Create out-of-source build directory (${BUILD_DIR}, see also "fail-structure.txt"):
+      $ mkdir build
+ 4. Enter out-of-source build directory.  All generated files end up there.
+      $ cd build
+ 5. Generate CMake environment.
+      $ cmake ..
+ 6. Setup build configuration by opening the CMake configuration tool
+      $ ccmake .
+    Select "BUILD_BOCHS" or "BUILD_GEM5".  Select an experiment to enable by
+    naming its "experiments/" subdirectory under "EXPERIMENTS_ACTIVATED".
+    Configure FAIL* features you need for this experiment by enabling
+    "CONFIG_*" options.  Press 'c', 'g' to regenerate the build system.
+    (Alternatively use
+      $ cmake-gui .
+    for a Qt GUI.)  To enable a Debug build, choose "Debug" as the build type,
+    otherwise choose "Release".
+    If building FailBochs, optionally set up the bochs configure flags
+    for your need.
+
+
+After changes to FAIL* code:
+------------------------------------------------------------
+Compile (in ${BUILD_DIR}, optionally "add -jN" for parallel building):
+  $ make
+CMake will build all FAIL* libraries and link them with the simulator backend
+library to a binary called "fail-client".  You may use the shell script
+  $ ${FAIL_DIR}/scripts/rebuild-bochs.sh [-]
+to speed up repetitive tasks regarding Fail/Bochs builds.  This script contains
+a concise documentation on itself.
+
+
+Add new FAIL* sources to build chain:
+------------------------------------------------------------
+To add new source files to the build, see CMakeLists.txt in the subdirectory of the
+corresponding component in "${FAIL_DIR}/src/core/", and probably consultate the
+CMake docs: http://cmake.org/cmake/help/documentation.html
+
+
+Add new experiment/plugin/campaign:
+------------------------------------------------------------
+Look at "${FAIL_DIR}/src/experiments/coolchecksum/" as a template.  After creating a
+new subdirectory in "experiments/", activate it in the CMake configuration step (see
+above).
+
+
+Generating the Doxygen documentation for FAIL*:
+**********************************************************************
+To generate the Doxygen documentation, type:
+  $ make doc
+The documentation files (HTML and LaTeX) are located in "${BUILD_DIR}/src/core/doc/".
+To open the HTML documentation, type:
+  $ firefox src/core/doc/html/index.html
+(You may want to replace "firefox" with your favourite browser.) The LaTeX docs need
+to be compiled previously:
+  $ cd src/core/doc/latex; make
+
+
+FailBochs: Bochs configuration features
+**********************************************************************
+
+ The autotools-based bochs is configured within the FAIL* build run. 
+ The configuration flags can be set within the ccmake configuration (ccmake ${FAIL_DIR}/build)
+     - Sufficient:
+         --enable-cpu-level=6;--enable-ne2000;--enable-trace-cache;--enable-gdb-stub;--disable-docbook;--with-nogui
+     - More simulator features and GUIs (FailBochs default configuration):
+         --enable-a20-pin;--enable-x86-64;--enable-cpu-level=6;--enable-ne2000;--enable-acpi;--enable-pci;--enable-usb;--enable-trace-cache;--enable-fast-function-calls;--enable-host-specific-asms;--enable-disasm;--enable-readline;--enable-clgd54xx;--enable-fpu;--enable-vmx=2;--enable-monitor-mwait;--enable-cdrom;--enable-sb16=linux;--enable-gdb-stub;--disable-docbook;--with-nogui;--with-x11;--with-wx;--with-sdl
+    The --with-nogui flag suffices for for "headless" experiments, with the
+    advantage of removing lots of library dependencies (thus reducing startup
+    overhead).  --with-x11 enables only the "x" (X11), --with-wx only the "wx"
+    (wxWidgets) GUI.  Note that "wx" does not play well together with FAIL*'s
+    "restore" feature (FailBochs will fall back to "x" if available, or die
+    trying.)
+    Once you know everything works as it should, you may want to add the
+    following flags before running larger campaigns:
+      --disable-logging --disable-assert-checks
+    Make sure --enable-repeat-speedups (--enable-all-optimizations implicitly
+    enables this) is not enabled; you will otherwise encounter funny effects
+    when tracing REP-prefixed instructions.
+    FIXME: Remove more redundant flags/libraries
+
+
+After changes to Bochs code:
+------------------------------------------------------------
+ - Just re-run "make" in ${BUILD_DIR}, or call "scripts/rebuild-bochs.sh -".
+   The latter automatically runs "make install" after rebuilding fail-client
+   (and probably the experiment's campaign server).
+ - Cleaning up (forcing a complete rebuild of libfailbochs.a next time):
+     $ make bochsallclean
+   This is especially necessary if you changed a Bochs-affecting aspect header
+   (.ah), as the build system does not know about Bochs sources depending on
+   certain aspects.
+
+
+Debug build:
+------------------------------------------------------------
+Configure Bochs to use debugging-related compiler flags (expects to be in ${BUILD_DIR}):
+  $ cd ../simulator/bochs
+  $ CFLAGS="-g -O0" CXXFLAGS="-g -O0" ./configure --prefix=... ... (see above)
+You might additionally want to configure the rest of FAIL* into debug mode by
+setting CMAKE_BUILD_TYPE to "Debug" (ccmake, see above).
+FIXME: Does this still work?
+
+
+Profiling-based optimization build:
+------------------------------------------------------------
+FIXME: ag++ needs to be run with --keep_woven
+Configure Bochs to use compiler flags to enable profiling:
+  $ cd ../simulator/bochs
+  $ CFLAGS="-fprofile-generate" CXXFLAGS="-fprofile-generate" LDFLAGS="-fprofile-generate" ./configure --prefix=... ... (see above)
+Build Bochs normally, and run it.  Configure Bochs to use compiler flags to enable
+optimizations based on profiling results:
+  $ CFLAGS="-fprofile-use -Wcoverage-mismatch" CXXFLAGS="-fprofile-use -Wcoverage-mismatch" LDFLAGS="-fprofile-use" ./configure --prefix=... ... (see above)
+
+
+Benchmarking:
+------------------------------------------------------------
+Simple instructions/second measurement:
+ - Configure Bochs with --enable-show-ips (see above)
+ - Modify the bochsrc: print_timestamps: enabled=1
+Comparison IPS numbers are shown in the default "bochsrc". Headless bochsrc configuration,
+all aspects disabled, guest system executes endless loop, host CPU Xeon X5470 (3.33GHz):
+IPS: 66124283 average = 66964789
+
+
+Building gem5:
+**********************************************************************
+
+For the first time (incl. selecting an experiment):
+------------------------------------------------------------
+ 1. Change to the FAIL* directory (expects to be in ${FAIL_DIR}) and
+    create a new build directory.
+      $ cd ${FAIL_DIR}; mkdir build; cd build
+ 3. Start the configuration by typing
+      $ cmake ..
+ 4. Modify the generated configuration according to your needs using
+      $ ccmake .
+    At least, you should set an experiment and turn on the configuration flags
+    BUILD_GEM5 and BUILD_ARM. Additionally, all config options specific for
+    other back-ends and architectures should be turned OFF, especially
+    BUILD_BOCHS and BUILD_X86.
+ 5. Typing
+      $ make   (or  nice make -jN)
+    will start the build process of FAIL* and gem5. This automatically
+    builds the debug variant for ARM targets. (Note that this build will
+    automatically include the ${FAIL_DIR}/src/core/sal/gem5 as an
+    "EXTRAS" feature, see gem5/scons build system documentation for
+    further information. That means, adding another directory containing
+    gem5-specific code requires to modify the gem5 build command, see
+    ${FAIL_DIR}/cmake/gem5.cmake.) The build process for gem5 currently
+    uses 9 cores for a parallel build regardless whether you specify a
+    different core count in the -jN option. This and various other stuff
+    (e.g. a release build, i.e. using "gem5.fast" instead of "gem5.debug")
+    can be changed in the aforementioned gem5.cmake file.
+
+NOTE: gem5 currently does not compile with the newer clang-based daily builds
+      of AspectC++ (ac++).  You may need to use the ac++ 1.2 release instead.
+
+After changes to FAIL*/gem5 code (incl. aspect headers):
+------------------------------------------------------------
+ 1. Clean the current build by typing 
+      $ make gem5-allclean
+    (in your build dir ${FAIL_DIR}/build). This cleans the current
+    FAIL* and gem5 build directories. Note that "make clean" only cleans
+    the FAIL* build directory. Furthermore, all remaining CMake remnants
+    should be deleted:
+      $ find -name CMakeCache.txt | xargs rm
+ 2. Rebuild by typing
+      $ make   (or  nice make -jN)
+    (as in the last step of the previous section).
+
+=========================================================================================
+Database backend setup: MySQL / MariaDB
+=========================================================================================
+ 1. Install MySQL or MariaDB via your favourite package manager.  (MariaDB
+    offers repositories for all major distributions.)
+ 2. Increase network timeouts in /etc/mysql/my.cnf to a reasonably high value,
+    campaigns tend to timeout on a regular basis with the default settings:
+      net_write_timeout = 3600
+      net_read_timeout = 3600
+    You may also want to tune other settings, especially increase memory usage.
+    There's lots of tuning knowledge on the web, and also automatic tuning
+    scripts such as the "Tuning Primer" <https://launchpad.net/mysql-tuning-primer>
+    or "MySQL Tuner" <http://mysqltuner.com>.
+ 3. Setup a non-root DB user.  <http://dev.mysql.com/doc/refman/5.5/en/adding-users.html>
+    Create a ~/.my.cnf (mode 0600) to avoid having to pass user name and
+    password to every program contacting the DB:
+      [client]
+      user=XXX
+      password=XXX
+ 4. Create a database for each FI campaign you want to conduct, and grant all
+    permissions to your non-root user.
+    <http://dev.mysql.com/doc/refman/5.5/en/create-database.html>
+    <http://dev.mysql.com/doc/refman/5.5/en/grant.html>
+    <http://dev.mysql.com/doc/refman/5.5/en/adding-users.html>
+
+=========================================================================================
+Building LLVM from sources
+=========================================================================================
+If your Linux distribution does not provide a library package for LLVM 3.9 or
+newer (the following steps work for LLVM 3.9), and you need LLVM support in
+FAIL*, you may need to build LLVM from the sources and install it, e.g.,
+locally in your home.
+
+ 1. Download the source tarball of LLVM 3.9 from http://llvm.org (or use the git
+    repository http://llvm.org/git/llvm.git and checkout release_39)
+ 2. Configure as needed.  On mixed 32/64-bit systems (userland/kernel),
+    prefixing with "linux32" may be necessary:
+    $ linux32 ./configure --prefix=$(echo ~/localroot/usr) --enable-optimized --disable-assertions --disable-werror
+    If you have an old version of clang installed, you may need to convince the
+    configure script to use gcc/g++ instead:
+    $ CC=gcc CXX=g++ ./configure --prefix=...
+ 3. Build with "make REQUIRES_RTTI=1", install.

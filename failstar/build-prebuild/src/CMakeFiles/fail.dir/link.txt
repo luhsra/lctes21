@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../lib/libfail.a  CMakeFiles/fail.dir/dummy.cc.o
+/usr/bin/ranlib ../lib/libfail.a

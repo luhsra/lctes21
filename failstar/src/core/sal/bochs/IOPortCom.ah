@@ -1,0 +1,46 @@
+#ifndef __IOPORT_COM_AH__
+  #define __IOPORT_COM_AH__
+
+#include "config/VariantConfig.hpp"
+#include "config/FailConfig.hpp"
+
+#if defined(BUILD_BOCHS) && defined(CONFIG_EVENT_IOPORT)
+
+#include "bochs.h"
+#include "cpu/cpu.h"
+
+#include "../SALInst.hpp"
+#include "BochsHelpers.hpp"
+
+// FIXME ATM only capturing the first byte of a multi-byte in/out
+
+aspect IOPortCom {
+	pointcut devices_outp() = "% ...::bx_devices_c::outp(...)";
+
+	advice call (devices_outp()) && within ("...::bx_cpu_c") : before ()
+	{
+		unsigned port = *(tjp->arg<0>());
+		unsigned data = *(tjp->arg<1>());
+
+		// detect the CPU that triggered the access
+		fail::ConcreteCPU& triggerCPU = fail::simulator.detectCPU(getCPU(tjp->that()));
+		// forward to SimulatorController
+		fail::simulator.onIOPort(&triggerCPU, data, port, true);
+	}
+
+	pointcut devices_inp() = "% ...::bx_devices_c::inp(...)";
+
+	advice call (devices_inp()) && within ("...::bx_cpu_c") : after ()
+	{
+		unsigned port = *(tjp->arg<0>());
+		unsigned data = *(tjp->result());
+
+		// detect the CPU that triggered the access
+		fail::ConcreteCPU& triggerCPU = fail::simulator.detectCPU(getCPU(tjp->that()));
+		// forward to SimulatorController
+		fail::simulator.onIOPort(&triggerCPU, data, port, false);
+	}
+};
+
+#endif // CONFIG_EVENT_IOPORT
+#endif // __IOPORT_COM_AH__

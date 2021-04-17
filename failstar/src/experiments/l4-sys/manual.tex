@@ -1,0 +1,309 @@
+\documentclass[a4paper,times,9pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{hyphenat}
+\usepackage{enumitem}
+\tolerance 2414
+\hbadness 2414
+\emergencystretch 1.5em
+\hfuzz 0.3pt
+\widowpenalty=10000     % Hurenkinder
+\clubpenalty=10000      % Schusterjungen
+\vfuzz \hfuzz
+\raggedbottom
+\usepackage{hyperref}
+
+\newcommand{\lfs}{L4Sys}
+
+%opening
+\title{L4Sys Fault Injection Campaign -- User Manual}
+\author{Martin Unzner (\href{mailto:munzner@os.inf.tu-dresden.de}{munzner@os.inf.tu-dresden.de}), \\
+        Björn Döbel (\href{mailto:doebel@os.inf.tu-dresden.de}{doebel@os.inf.tu-dresden.de}), \\   
+        Tobias Stumpf (\href{mailto:tstumpf@os.inf.tu-dresden.de}{tstumpf@os.inf.tu-dresden.de})}    
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This document describes how to use the L4Sys experiment suite.
+However, this is not a complete documentation. When in doubt,
+please read the source code or contact us. Still, we would like
+you to read this whole document before investigating further.
+\end{abstract}
+
+\section{Overview}
+
+This is the user manual of the \lfs{} generic system test framework.
+The framework builds on FAIL* and provides means to perform fault injection
+experiments for applications running on top of the Fiasco.OC/L4Re
+microkernel-based operating system as well as the underlying microkernel.
+
+\noindent \lfs{} provides two experiment types:
+\begin{enumerate}[topsep=0em,itemsep=0em]
+  \item \emph{GPRFLIP} simulates bit flips in general purpose registers.
+  \item \emph{MEM} simulates memorry bit flipps.
+\end{enumerate}
+
+\noindent \lfs{} currently works for x86/32 running in Fail/Bochs only.
+This is partly due to some issues with timing --- as soon as a valid model of
+time in the target emulator as well as an assembler/disassembler functionality
+in the FAIL* framework are established, I would recommend a backend change, as
+Bochs' reliability is very limited.
+
+\section{Framework Setup}
+
+To prepare a fault injection campaign you will first need to configure and
+build FAIL* itself. This process is described in \texttt{doc/how-to-build.txt}.
+The following CMake flags need to be set:
+
+\begin{itemize}[itemsep=0em]
+\item \verb+BUILD_BOCHS = ON+
+\item \verb+BUILD_X86 = ON+
+\item \verb+CONFIG_BOCHS_NO_ABORT = ON+
+\item \verb+CONFIG_EVENT_BREAKPOINTS = ON+
+\item \verb+CONFIG_EVENT_IOPORT = ON+
+\item \verb+CONFIG_SR_RESTORE = ON+
+\item \verb+CONFIG_SR_SAVE = ON+
+\item \verb+EXPERIMENTS_ACTIVATED = l4-sys+
+\end{itemize}
+
+Enabling \verb+CONFIG_FAST_BREAKPOINTS+ may speed up the experiment clients
+significantly. Enabling \verb+CONFIG_BOCHS_NO_ABORT+ is necessary to detect
+whether Bochs stopped because of a bad instruction (currently not used).
+Keep in mind that this implies the risk of a deadlock
+in the campaign system, because packets (i.e. experiment descriptions)
+are resent if the client does not answer and finally, all clients
+might fail because they tried to execute the same faulty instruction.
+
+\section{Emulator Setup}
+
+The next step is to prepare a L4Re application setup to run in Bochs.  To
+setup your system, first, you need a dedicated \texttt{bochsrc} file.  It has
+proven useful to have a Bochs resource file or an independent Bochs instance
+with GUI enabled for the initial testing, however the experiments are intended
+to be conducted without graphical output.
+
+Bochs should be booted using a CD image containing your setup. To obtain this
+setup, first build Fiasco.OC and L4Re separately as described in their
+respective \href{https://os.inf.tu-dresden.de/L4Re/build.html}{build
+instructions}. Make sure your setup is running, e.g., in QEMU. Once this
+works, create an ISO image using the L4 build system's 
+\verb+make grub2iso E=<entry>+ command. Validate that this ISO boots and runs
+in Bochs.
+
+
+\section{Client Setup}
+
+Now that we have FAIL* and the L4Re setup running, we can prepare our fault
+injection campaign. This requires three (+ one optional) steps:
+\begin{enumerate}[topsep=0em,itemsep=0em]
+  \item \emph{OPTIONAL:} If we want to perform a campaign that only targets
+        a single application, we need to determine this application's address
+        space ID. Choosing a different link address (add
+				\verb+DEFAULT_RELOC = 0x20000000+ in your applications Makefile)
+				helps you to figure out your address space by stopping at a unique
+				instruction pointer.
+  \item \emph{REQUIRED:} We perform an initial run of our setup in Bochs until
+        the point where Bochs is booted and the application in question
+        starts. At this point we take a snapshot of the emulator so that we
+        can skip everything upfront in the remaining runs.
+  \item \emph{REQUIRED:} The \lfs{} campaign uses the number of instructions to
+        determine the set of instructions to inject faults in. We need to
+        perform one run of our setup to determine this number.
+  \item \emph{REQUIRED:} We need to perform a \emph{golden run} without any
+        fault injections. Later faults are then compared against this run.
+\end{enumerate}
+
+All parameters of the \lfs{} experiment can be configured via file
+\texttt{experiment.conf} or can be given to \verb+fail-client+ as command
+line parameter. 
+
+\subsection{Constants}
+
+Some configuration values are constant throughout all steps of the preparation 
+and also when the workload program is run.  The most important configuration
+parameter is \verb+emul_ipc+, which has to be consistent with your \texttt{bochsrc}
+setting and is used for several timely calculations in the client.
+
+\subsection{Preparation}
+
+First, we need to find the start and end instruction addresses for our
+workload program and our given experiment. For this purpose, use a
+disassembler, such as \texttt{objdump} or \emph{IDA Pro}. Determine the first
+and last instruction for your campaign and set  \verb+func_entry+ and
+\verb+func_exit+ in the configuration file accordingly. Additionally, you
+can limit the range for FI by setting \verb+filter_entry+ and \verb+filter_exit+.
+
+All preparations steps can be done together or step-by-step. To start
+preparation call fail-client with the parameter \verb+-Wf,--step=OPTION+.
+Use \verb+OPTION=all+ for doing all preparations steps together.
+
+\subsubsection{Step 0: Determine the address space (OPTION=cr3)}
+
+If you are not interested in address space filtering, you may set
+\verb+address_space+ to \verb+0+. Note that in this case you will
+probably encounter instruction pointers across various address spaces and may
+not get the unique results you want.
+
+During this step, the option \verb+address_space+ of your configuration
+file is is updated.
+
+
+\subsubsection{Step 1: Save the initial state of the machine}
+
+Make sure you have set \verb+address_space+ accordingly.
+Now recompile and execute the framework code again, this time with the graphical
+user interface disabled. The experiment client runs until
+\verb+func_entry+ is reached and then saves the complete configuration.
+
+\subsubsection{Step 2: Determine the instructions to execute}
+
+
+For this part the filter-file (\verb+filter.list+ by default) is
+read to filter out instruction which are not in any of the specified
+ranges.
+
+After the program has finished, you will get a summary on the
+total of instructions executed.
+
+\subsubsection{Step 3: Determine the correct output}
+
+The framework runs the complete program and logs the output. You can
+check the resulting file (by default \texttt{golden.out}),
+and if it does not comply with your expectations of a valid
+run, you should correct the entry and exit point, the address space
+or, in the worst case, your Bochs settings.
+
+\subsubsection{Step 4: Fill the database with your experiments}
+
+Use the tools \verb+import-trace+ and \verb+prune-trace+ to
+import the data and reducing the amount of necessary experiments.
+
+You can call both applications with parameters specifying your
+database setup or using a default config file (\verb+~/.my.cnf+)
+defining username, password and database name. For \verb+import-trace+
+you have to specify the following parameters: 
+
+\begin{itemize}
+	\item \verb+--importer MemoryImport|RegisterImporter+
+	\item \verb+-e+ YourImageName
+	\item \verb+-t+ NameOfYourTraceFile (trace.pb by default)
+\end{itemize}
+
+\section{Campaign Setup}
+
+To start a FI-experiment, you need to start both the campaign server 
+(\verb+l4-sys-server+) and the experiment client (texttt{l4-sys-server})
+needs a parameter to specify the experiment type.
+
+If \verb+l4-sys-server+ and \verb+fail-client+ are running on 
+different core then the config parameter \verb+campain_server+ should
+be added to specify the host name or ip addr. of the machine running 
+\verb+l4-sys-server+.
+
+Each experiment client  processes exactly one experiment 
+and exits. To complete your campaign, you should use the \verb+client.sh+
+script in the \texttt{scripts} subdirectory of FAIL*.
+
+
+\section{Get your results}
+
+Your results are stored in your database. Look at the table \verb+result_L4SysProtoMsg+
+to see your results. 
+
+\iffalse
+When the campaign is finished, the campaign server generates a report
+file (by default called \texttt{lfsys.csv}) in a primitive CSV dialect.
+The only syntax rules are that the columns are separated by commas,
+that the respective data sets are separated by line breaks (\verb+\n+),
+and that the cells do not contain line breaks or commas.
+
+This section lists and describes the columns in the report generated by
+the campaign server, from left to right.
+
+\begin{enumerate}[topsep=0em,itemsep=0em]
+ \item \verb+exp_type+\\
+       Names the experiment that generated the return data.
+       If it is none of the following, a writing error occurred:
+       \begin{itemize}[itemsep=0em]
+        \item Unknown
+        \item GPR Flip
+        \item RAT Flip
+        \item IDC Flip
+        \item ALU Instr Flip
+       \end{itemize}
+       For \emph{Unknown}, a debug report should be provided.
+       If not, something went completely wrong, and you should
+       check the logs.
+ \item \verb+injection_ip+\\
+       The instruction pointer of the fault injection
+       in lowercase hexadecimal notation.
+       Note that the injection happens right \emph{before} this
+       instruction.
+ \item \verb+register+\\
+       When the fault injection experiment affects a general purpose register,
+       it is listed here. This column should have one of the following values;
+       if it does not, a writing error occurred:
+       \begin{enumerate}[itemsep=0em]
+        \item Unknown
+        \item EAX
+        \item ECX
+        \item EDX
+        \item EBX
+        \item ESP
+        \item EBP
+        \item ESI
+        \item EDI
+       \end{enumerate}
+ \item \verb+instr_offset+\\
+       The offset of the executed instruction, relative to either all executed
+       instructions or to all listed instructions in case you applied
+       a filter (see above). This offset includes multiple runs of the same
+       instruction.
+       For example, this is useful when you have loops in you program and
+       need a rough idea how many runs your loop had executed until
+       the injection.
+ \item \verb+injection_bit+\\
+       The bit at which the injection was performed. This value is
+       only used in GPRFlip and IDCFlip. GPRFlip inverts the bit at
+       position \verb+injection_bit+ in the register, counted from the right.
+       IDCFlip inverts the bit at position \verb+injection_bit+
+       of the current instruction, counted from the left.    
+ \item \verb+resulttype+\\
+       The result of the fault injection.
+       This column should have one of the following values;
+       if it does not, a writing error occurred:
+       \begin{enumerate}[itemsep=0em]
+        \item Unknown
+        \item No effect
+        \item Incomplete execution
+        \item Crash
+        \item Silent data corruption
+        \item Error
+       \end{enumerate}
+ \item \verb+resultdata+\\
+       The meaning of this field can vary for each experiment. At the moment,
+       all of the experiments use it to store the last instruction
+       pointer of the emulator (in decimal notation).
+       This information can be used to determine when a fault
+       turned into a failure.
+ \item \verb+output+\\
+       The output on the EIA-232 serial line generated by the workload
+       program. Undisplayable or reserved characters are escaped in a
+       C conformant octal manner (e.g. \verb+\033+ for the Escape character).
+ \item \verb+details+\\
+       This column provides various details on the experiment run,
+       which may help to
+       trace errors or to reconstruct the injected fault.
+       ALUInstrFlip uses this column to
+       provide the opcode of the new instruction.
+\end{enumerate}
+
+\fi
+\section{Known bugs}
+
+If you need support for more than one processor,
+you will have to extend the code accordingly:
+at the moment, when in doubt, it uses the first CPU.
+
+\end{document}

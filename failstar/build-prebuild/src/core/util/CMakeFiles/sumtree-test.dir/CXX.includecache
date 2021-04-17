@@ -1,0 +1,32 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../src/core/util/Logger.hpp
+iostream
+-
+sstream
+-
+
+../src/core/util/SumTree.hpp
+assert.h
+-
+stdint.h
+-
+vector
+-
+stack
+-
+
+/home/ae/failstar/src/core/util/testing/SumTreeTest.cc
+util/SumTree.hpp
+/home/ae/failstar/src/core/util/testing/util/SumTree.hpp
+util/Logger.hpp
+/home/ae/failstar/src/core/util/testing/util/Logger.hpp
+iostream
+-
+

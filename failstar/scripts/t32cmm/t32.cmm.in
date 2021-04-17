@@ -1,0 +1,10 @@
+;===== Cortex-M3 Lauterbach initialisation ====
+
+&appimage="@T32_ELF_PATH@"
+
+DO init.cmm
+
+;VAr.Frame /LOCALS /CALLER
+REGISTER /SPOTLIGHT
+;Data.ListAsm
+

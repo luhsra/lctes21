@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libfail-serialoutput.a  CMakeFiles/fail-serialoutput.dir/SerialOutputLogger.cc.o
+/usr/bin/ranlib ../../../lib/libfail-serialoutput.a

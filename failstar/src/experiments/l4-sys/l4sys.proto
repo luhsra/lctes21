@@ -1,0 +1,63 @@
+syntax = "proto2";
+
+import "DatabaseCampaignMessage.proto";
+
+message L4SysProtoMsg {
+
+	// experiment types
+	enum ExperimentType {
+		GPRFLIP = 1;
+		RATFLIP = 2;
+		IDCFLIP = 3;
+		ALUINSTR = 4;
+		MEM = 5;
+	}
+
+	// registers
+	enum RegisterType {
+		EAX = 1;
+		ECX = 2;
+		EDX = 3;
+		EBX = 4;
+		ESP = 5;
+		EBP = 6;
+		ESI = 7;
+		EDI = 8;
+	}
+
+	// results
+	// make these optional to reduce overhead for server->client communication
+	enum ResultType {
+		DONE = 1;
+		INCOMPLETE = 2;
+		TIMEOUT = 3;
+		WRONG = 4;
+		UNKNOWN = 5;
+		FAILSTOP = 6;
+	}
+
+	required DatabaseCampaignMessage fsppilot = 1;
+	required ExperimentType exp_type = 2;
+
+	repeated group Result = 3 {
+		// parameters
+		required uint32 instr_offset = 1;
+		required uint32 bit_offset = 2 [(sql_primary_key) = true];
+
+		optional RegisterType register_offset = 3;
+
+		// instruction pointer where injection was done
+		optional uint32 injection_ip = 4;
+		// result type, see above
+		optional ResultType resulttype = 5;
+		// result data, depending on resulttype (see source code)
+		optional uint32 resultdata = 6;
+		// generated output
+		optional string output = 7;
+		// optional textual description of what happened
+		optional string details = 8;
+		optional uint32 injection_address = 9;
+		optional uint32 deviate_steps = 10;
+		optional uint32 deviate_eip   = 11;
+	}
+}

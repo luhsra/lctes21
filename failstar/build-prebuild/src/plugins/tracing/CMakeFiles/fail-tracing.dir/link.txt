@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libfail-tracing.a  CMakeFiles/fail-tracing.dir/TracingPlugin.cc.o
+/usr/bin/ranlib ../../../lib/libfail-tracing.a

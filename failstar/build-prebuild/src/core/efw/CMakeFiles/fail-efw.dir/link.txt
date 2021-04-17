@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libfail-efw.a  CMakeFiles/fail-efw.dir/CoroutineManager.cc.o CMakeFiles/fail-efw.dir/JobClient.cc.o CMakeFiles/fail-efw.dir/DatabaseExperiment.cc.o
+/usr/bin/ranlib ../../../lib/libfail-efw.a

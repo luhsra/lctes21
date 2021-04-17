@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libfail-generic-tracing.a  CMakeFiles/fail-generic-tracing.dir/experiment.cc.o
+/usr/bin/ranlib ../../../lib/libfail-generic-tracing.a

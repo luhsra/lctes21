@@ -1,0 +1,19 @@
+#ifndef __INSTANTIATE_@EXPERIMENT_TYPE@_AH__
+  #define __INSTANTIATE_@EXPERIMENT_TYPE@_AH__
+
+// Make sure your experiment declaration is in experiment.hpp:
+#include "../experiments/@EXPERIMENT_NAME@/experiment.hpp"
+#include "sal/SALInst.hpp"
+
+// The experiment needs to be instantiated dynamically (on the stack, or the
+// heap), as the ExperimentFlow destructor deregisters from the
+// CoroutineManager which may not exist anymore if the global
+// construction/destruction order is inappropriate.
+
+aspect @EXPERIMENT_TYPE@ExperimentHook {
+	advice execution ("void fail::SimulatorController::initExperiments()") : after () {
+		fail::simulator.addFlow(new @EXPERIMENT_TYPE@);
+	}
+};
+
+#endif // __INSTANTIATE_@EXPERIMENT_TYPE@_AH__

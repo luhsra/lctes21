@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libfail-cpn.a  CMakeFiles/fail-cpn.dir/CampaignManager.cc.o CMakeFiles/fail-cpn.dir/JobServer.cc.o CMakeFiles/fail-cpn.dir/DatabaseCampaign.cc.o CMakeFiles/fail-cpn.dir/InjectionPointSteps.cc.o
+/usr/bin/ranlib ../../../lib/libfail-cpn.a

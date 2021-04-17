@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../../lib/libfail-capstonedisassembler.a  CMakeFiles/fail-capstonedisassembler.dir/CapstoneDisassembler.cpp.o CMakeFiles/fail-capstonedisassembler.dir/CapstoneToFailBochs.cpp.o CMakeFiles/fail-capstonedisassembler.dir/CapstoneToFailGem5.cpp.o CMakeFiles/fail-capstonedisassembler.dir/CapstoneToFailTranslator.cpp.o
+/usr/bin/ranlib ../../../../lib/libfail-capstonedisassembler.a

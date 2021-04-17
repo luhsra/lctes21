@@ -1,0 +1,19 @@
+#ifndef __INSTANTIATE_GenericTracing_AH__
+  #define __INSTANTIATE_GenericTracing_AH__
+
+// Make sure your experiment declaration is in experiment.hpp:
+#include "../experiments/generic-tracing/experiment.hpp"
+#include "sal/SALInst.hpp"
+
+// The experiment needs to be instantiated dynamically (on the stack, or the
+// heap), as the ExperimentFlow destructor deregisters from the
+// CoroutineManager which may not exist anymore if the global
+// construction/destruction order is inappropriate.
+
+aspect GenericTracingExperimentHook {
+	advice execution ("void fail::SimulatorController::initExperiments()") : after () {
+		fail::simulator.addFlow(new GenericTracing);
+	}
+};
+
+#endif // __INSTANTIATE_GenericTracing_AH__

@@ -1,0 +1,10 @@
+# Target labels
+ libfailbochs_external
+# Source files and their labels
+/home/ae/failstar/build/CMakeFiles/libfailbochs_external-configure
+/home/ae/failstar/build/CMakeFiles/libfailbochs_external-configure.rule
+/home/ae/failstar/simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-configure.rule
+/home/ae/failstar/simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-update.rule
+/home/ae/failstar/simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-patch.rule
+/home/ae/failstar/simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-download.rule
+/home/ae/failstar/simulators/bochs/src/libfailbochs_external-stamp/libfailbochs_external-mkdir.rule
